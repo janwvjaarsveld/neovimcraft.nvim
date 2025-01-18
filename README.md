@@ -1,6 +1,10 @@
 # Neovimcraft.nvim
 
-Neovimcraft.nvim is a Neovim plugin designed to simplify the process of discovering and exploring plugins from the [nvim.sh](https://nvim.sh) API (see [neurosnap/neovimcraft](https://github.com/neurosnap/neovimcraft). It integrates seamlessly with [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim), offering an intuitive interface for plugin and tag searches.
+Neovimcraft.nvim is a Neovim plugin designed to simplify the process of
+discovering and exploring plugins from the [nvim.sh](https://nvim.sh) API
+(see [neurosnap/neovimcraft](https://github.com/neurosnap/neovimcraft). It integrates
+seamlessly with [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim),
+offering an intuitive interface for plugin and tag searches.
 
 ## Telescope Table of Contents
 
@@ -22,8 +26,12 @@ Neovimcraft.nvim is a Neovim plugin designed to simplify the process of discover
 
 ## Disclaimer
 
-This plugin is **not an official plugin** for [neovimcraft.com](https://neovimcraft.com). It is an independent project that utilizes the publicly available [nvim.sh API](https://nvim.sh) to fetch and display plugin data.
-Special thanks to the team behind [neovimcraft.com](https://neovimcraft.com) for providing such an excellent resource for the Neovim community and making this API available.
+This plugin is **not an official plugin** for [neovimcraft.com](https://neovimcraft.com).
+It is an independent project that utilizes the publicly available [nvim.sh API](https://nvim.sh)
+to fetch and display plugin data.
+Special thanks to the team behind [neovimcraft.com](https://neovimcraft.com)
+for providing such an excellent resource for the Neovim community and making
+this API available.
 
 ## Features
 
@@ -72,7 +80,8 @@ use {
 
 ## Configuration
 
-You can configure neovimcraft.nvim by passing a table to the setup function. Below is the default configuration:
+You can configure neovimcraft.nvim by passing a table to the setup function.
+Below is the default configuration:
 
 ```lua
 require('neovimcraft').setup({
@@ -99,7 +108,8 @@ require('neovimcraft').setup({
 
 ## Commands
 
-If `setup_user_commands` is enabled, the following user commands are available (unless you've customized the command names):
+If `setup_user_commands` is enabled, the following user commands are available
+(unless you've customized the command names):
 
 - `:NeovimcraftPlugins` – Search all plugins from nvim.sh.
 - `:NeovimcraftTags` – List all available tags from nvim.sh.
@@ -112,9 +122,9 @@ To search for plugins:
 
 1. Open the Telescope picker with the user command:
 
-```vim
-:NeovimcraftPlugins
-```
+   ```vim
+   :NeovimcraftPlugins
+   ```
 
 2. Select a plugin to view its details in a floating window.
 3. In the floating window:
@@ -126,9 +136,9 @@ To search for plugins:
 
 1. List all tags:
 
-```vim
-:NeovimcraftTags
-```
+   ```vim
+   :NeovimcraftTags
+   ```
 
 2. Select a tag to view plugins associated with it.
 
@@ -147,7 +157,8 @@ You can then use the following Telescope functions:
 
 ## Contributing
 
-Feel free to contribute by submitting issues, feature requests, or pull requests. Ensure code follows best practices and is well-documented.
+Feel free to contribute by submitting issues, feature requests, or pull
+requests. Ensure code follows best practices and is well-documented.
 
 ---
 
