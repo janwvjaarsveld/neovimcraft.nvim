@@ -72,18 +72,19 @@ require('neovimcraft').setup({
         close = "q", -- Key to close the preview window
         open_git = "o", -- Key to open GitHub link
     },
-	cache_ttl = { -- How long to cache API data in seconds
-		plugins = 24 * 3600, -- 24 hours
-		tags = 24 * 3600, -- 24 hours
-	},
+    cache_ttl = { -- How long to cache API data in seconds
+        plugins = 24 * 3600, -- 24 hours
+        tags = 24 * 3600, -- 24 hours
+    },
 })
 ```
 
 ## Commands
 
-If setup_user_commands is enabled, the following commands are available:
-• :NeovimcraftPlugins – Search all plugins from nvim.sh.
-• :NeovimcraftTags – List all available tags from nvim.sh.
+If `setup_user_commands` is enabled, the following user commands are available (unless you've customized the command names):
+
+- `:NeovimcraftPlugins` – Search all plugins from nvim.sh.
+- `:NeovimcraftTags` – List all available tags from nvim.sh.
 
 ## Usage
 
@@ -91,28 +92,29 @@ If setup_user_commands is enabled, the following commands are available:
 
 To search for plugins:
 
-    1.	Open the Telescope picker with the user command:
+1. Open the Telescope picker with the user command:
 
 ```vim
 :NeovimcraftPlugins
 ```
 
-    2.	Select a plugin to view its details in a floating window.
-    3.	In the floating window:
-    •	Press q to close the window.
-    •	Press o to open the plugin’s GitHub page.
+2. Select a plugin to view its details in a floating window.
+3. In the floating window:
+
+- Press `q` to close the window.
+- Press `o` to open the plugin’s GitHub page.
 
 ### Search Plugins by Tag
 
-    1.	List all tags:
+1. List all tags:
 
 ```vim
 :NeovimcraftTags
 ```
 
-    2.	Select a tag to view plugins associated with it.
+2. Select a tag to view plugins associated with it.
 
-From Telescope Extension
+## From Telescope Extension
 
 If you’re using Telescope extensions, load the neovimcraft.nvim extension:
 
@@ -121,12 +123,9 @@ require('telescope').load_extension('neovimcraft')
 ```
 
 You can then use the following Telescope functions:
-• `:Telescope neovimcraft.seach_plugins` – Search plugins.
-• `:Telescope neovimcraft.search_tags` – List tags.
 
-## Screenshots
-
-(Include screenshots of the plugin in action, such as plugin searches and previews.)
+- `:Telescope neovimcraft seach_plugins` – Search plugins.
+- `:Telescope neovimcraft search_tags` – List tags.
 
 ## Contributing
 
