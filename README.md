@@ -1,6 +1,24 @@
 # Neovimcraft.nvim
 
-Neovimcraft.nvim is a Neovim plugin designed to simplify the process of discovering and exploring plugins from the [nvim.sh](https://nvim.sh) API. It integrates seamlessly with [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim), offering an intuitive interface for plugin and tag searches.
+Neovimcraft.nvim is a Neovim plugin designed to simplify the process of discovering and exploring plugins from the [nvim.sh](https://nvim.sh) API (see [neurosnap/neovimcraft](https://github.com/neurosnap/neovimcraft). It integrates seamlessly with [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim), offering an intuitive interface for plugin and tag searches.
+
+## Telescope Table of Contents
+
+<!--toc:start-->
+
+- [Neovimcraft.nvim](#neovimcraftnvim)
+  - [Disclaimer](#disclaimer)
+  - [Features](#features)
+  - [Requirements](#requirements)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+  - [Commands](#commands)
+  - [Usage](#usage)
+    - [Plugin Search](#plugin-search)
+    - [Search Plugins by Tag](#search-plugins-by-tag)
+  - [From Telescope Extension](#from-telescope-extension)
+  - [Contributing](#contributing)
+  <!--toc:end-->
 
 ## Disclaimer
 
@@ -131,8 +149,6 @@ You can then use the following Telescope functions:
 
 Feel free to contribute by submitting issues, feature requests, or pull requests. Ensure code follows best practices and is well-documented.
 
-## License
-
-## This plugin is licensed under the MIT License. See LICENSE for more details.
+---
 
 Enjoy discovering awesome Neovim plugins with Neovimcraft.nvim! 🚀
