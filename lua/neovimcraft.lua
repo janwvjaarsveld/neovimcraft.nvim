@@ -1,7 +1,7 @@
 local pickers = require("telescope.pickers")
 local finders = require("telescope.finders")
-local conf = require("telescope.config").values
 local actions = require("telescope.actions")
+local sorters = require("telescope.sorters")
 local action_state = require("telescope.actions.state")
 local previewers = require("telescope.previewers")
 local curl = require("plenary.curl")
@@ -35,8 +35,8 @@ local M = {}
 ---@field border string
 
 ---@class CommandNames
----@field plugin_seach string
----@field tag_seach string
+---@field plugin_search string
+---@field tag_search string
 
 ---@class KeyBindings
 ---@field close string
@@ -65,8 +65,8 @@ local config = {
 	setup_user_commands = false,
 	-- User command name
 	command_names = {
-		plugin_seach = "NeovimcraftPlugins",
-		tag_seach = "NeovimcraftTags",
+		plugin_search = "NeovimcraftPlugins",
+		tag_search = "NeovimcraftTags",
 	},
 	-- Keymap: pass map = false to skip setting a keymap
 	key_bindings = {
@@ -203,8 +203,7 @@ end
 ---@param plugin Plugin
 local function format_plugin(plugin)
 	local name = plugin.name or "Unknown"
-	local description = plugin.description or ""
-	return string.format("%s - %s", name, description)
+	return string.format("%s", name)
 end
 
 ---@param plugin Plugin
@@ -272,11 +271,11 @@ local function plugin_picker(opts, content)
 					return {
 						value = plugin,
 						display = format_plugin(plugin),
-						ordinal = plugin.name .. " " .. (plugin.description or ""),
+						ordinal = plugin.name,
 					}
 				end,
 			}),
-			sorter = conf.generic_sorter(opts),
+			sorter = sorters.get_fzy_sorter(opts),
 			previewer = plugin_previewer,
 			attach_mappings = function(prompt_bufnr)
 				actions.select_default:replace(function()
@@ -341,6 +340,10 @@ function M.search_plugins(opts)
 	update_cache("plugins")
 
 	local content = cache.plugins.content
+	if not content then
+		vim.notify("Failed to fetch data from nvim.sh", vim.log.levels.ERROR)
+		return
+	end
 	plugin_picker(opts, content)
 end
 
@@ -369,7 +372,7 @@ function M.search_tags(opts)
 					}
 				end,
 			}),
-			sorter = conf.generic_sorter(opts),
+			sorter = sorters.get_fzy_sorter(opts),
 			attach_mappings = function(prompt_bufnr)
 				actions.select_default:replace(function()
 					local selection = action_state.get_selected_entry()
@@ -386,20 +389,20 @@ end
 --- Setup function to initialize user config and commands.
 --- @param user_config? table: The user configuration
 function M.setup(user_config)
-	config = vim.tbl_deep_extend("force", default_config, user_config or {})
+	config = vim.tbl_deep_extend("force", config, user_config or {})
 	if config.setup_user_commands then
 		M.setup_user_commands()
 	end
 end
 
 function M.setup_user_commands()
-	vim.api.nvim_create_user_command(config.command_names.plugin_seach, function(opts)
+	vim.api.nvim_create_user_command(config.command_names.plugin_search, function(opts)
 		M.search_plugins(opts)
 	end, {
 		desc = string.format("Search all plugins from Neovimcraft"),
 	})
-	vim.api.nvim_create_user_command(config.command_names.tag_seach, function(opts)
-		M.list_tags(opts)
+	vim.api.nvim_create_user_command(config.command_names.tag_search, function(opts)
+		M.search_tags(opts)
 	end, {
 		desc = string.format("List all tags from Neovimcraft"),
 	})
