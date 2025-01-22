@@ -6,12 +6,23 @@ discovering and exploring plugins from the [nvim.sh](https://nvim.sh) API
 seamlessly with [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim),
 offering an intuitive interface for plugin and tag searches.
 
+## Disclaimer
+
+This plugin is **not an official plugin** for [neovimcraft.com](https://neovimcraft.com).
+It is an independent project that utilizes the publicly available from neovimcraft.com
+to fetch and display plugin data.
+Special thanks to the team behind [neovimcraft.com](https://neovimcraft.com)
+for providing such an excellent resource for the Neovim community and making
+this API available.
+
+[Eric Bower]("https://bower.sh")
+[Nvim.sh]("https://github.com/neurosnap/nvim.sh")
+
 ## Telescope Table of Contents
 
 <!--toc:start-->
 
 - [Neovimcraft.nvim](#neovimcraftnvim)
-  - [Disclaimer](#disclaimer)
   - [Features](#features)
   - [Requirements](#requirements)
   - [Installation](#installation)
@@ -23,15 +34,6 @@ offering an intuitive interface for plugin and tag searches.
   - [From Telescope Extension](#from-telescope-extension)
   - [Contributing](#contributing)
   <!--toc:end-->
-
-## Disclaimer
-
-This plugin is **not an official plugin** for [neovimcraft.com](https://neovimcraft.com).
-It is an independent project that utilizes the publicly available [nvim.sh API](https://nvim.sh)
-to fetch and display plugin data.
-Special thanks to the team behind [neovimcraft.com](https://neovimcraft.com)
-for providing such an excellent resource for the Neovim community and making
-this API available.
 
 ## Features
 
