@@ -43,7 +43,6 @@ local M = {}
 ---@class CommandNames
 ---@field search_plugins string
 ---@field search_tags string
----@field search_by_tag string
 
 ---@class KeyBindings
 ---@field close string
@@ -69,12 +68,11 @@ local config = {
 		height_ratio = 0.8, -- The fraction of the editor's height
 		border = "double", -- Available options: 'none', 'single', 'double', 'rounded', etc.
 	},
-	setup_user_commands = false,
+	setup_user_commands = true,
 	-- User command name
 	command_names = {
 		search_plugins = "NeovimcraftPlugins",
 		search_tags = "NeovimcraftTags",
-		search_by_tag = "NeovimcraftByTag",
 	},
 	-- Keymap: pass map = false to skip setting a keymap
 	key_bindings = {
@@ -432,16 +430,16 @@ function M.setup_user_commands()
 		desc = string.format("Search all plugins from Neovimcraft"),
 	})
 	vim.api.nvim_create_user_command(config.command_names.search_tags, function(opts)
-		M.search_tags(opts)
-	end, {
-		desc = string.format("List all tags from Neovimcraft"),
-	})
-	vim.api.nvim_create_user_command(config.command_names.search_by_tag, function(opts)
 		local args = opts.fargs
-		opts = vim.tbl_extend("force", opts, { search_term = args[1] })
-		M.search_by_tag(opts)
+		if not args or #args == 0 then
+			M.search_tags(opts)
+		else
+			opts = vim.tbl_extend("force", opts, { search_term = args[1] })
+			M.search_by_tag(opts)
+		end
 	end, {
-		desc = string.format("List all tags from Neovimcraft"),
+		desc = string.format("List all tags from Neovimcraft. Optionally search plugins by tag"),
+		nargs = "?",
 	})
 end
 
