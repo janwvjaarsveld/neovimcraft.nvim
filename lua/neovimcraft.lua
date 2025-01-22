@@ -34,7 +34,6 @@ local EndpointTypes = {
 }
 
 local M = {}
-local job = {}
 
 ---@class WindowConfig
 ---@field width_ratio number
@@ -66,7 +65,7 @@ local job = {}
 local config = {
 	-- Floating window configuration
 	window = {
-		width_ratio = 0.8, -- The fraction of the editor's width
+		width_ratio = 0.6, -- The fraction of the editor's width
 		height_ratio = 0.8, -- The fraction of the editor's height
 		border = "double", -- Available options: 'none', 'single', 'double', 'rounded', etc.
 	},
@@ -269,7 +268,7 @@ local plugin_previewer = previewers.new_buffer_previewer({
 		local plugin = entry.value
 		local content = format_plugin_preview(plugin)
 		vim.api.nvim_buf_set_lines(self.state.bufnr, 0, -1, false, content)
-		vim.api.nvim_buf_set_option(self.state.bufnr, "filetype", "markdown")
+		vim.api.nvim_set_option_value("filetype", "markdown", { buf = self.state.bufnr })
 	end,
 })
 
@@ -305,12 +304,15 @@ local function plugin_picker(opts, content)
 					local floating = create_floating_window({
 						title = plugin.name,
 					})
+					vim.api.nvim_buf_set_name(floating.buf, plugin.name .. "README.md")
 
-					local ok, glow = pcall(require, "glow")
-					if ok then
+					if vim.fn.executable("glow") == 1 then
+						vim.api.nvim_set_option_value("filetype", "terminal", { buf = floating.buf })
+						-- vim.api.nvim_win_set_option("winblend", 0, { win = floating.win })
+						vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = floating.buf })
+						vim.api.nvim_set_option_value("filetype", "glowpreview", { buf = floating.buf })
+						vim.fn.termopen({ "glow", get_url(plugin) })
 					else
-						vim.api.nvim_buf_set_name(floating.buf, plugin.name .. "README.md")
-
 						-- Clear existing content and insert the fetched lines
 						local lines = retrieve_plugin_readme(plugin)
 						if not lines then
