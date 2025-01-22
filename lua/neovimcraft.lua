@@ -25,9 +25,16 @@ local curl = require("plenary.curl")
 --- @field createdAt string The date the plugin was created
 --- @field updatedAt string The last updated date
 
---- @alias endpointTypes "plugins"|"tags"|"tag_search"
+--- @alias endpointTypes "search_plugins"|"search_tags"|"search_by_tag"
+--- @enum EndpointTypes
+local EndpointTypes = {
+	search_plugins = "search_plugins",
+	search_tags = "search_tags",
+	search_by_tag = "search_by_tag",
+}
 
 local M = {}
+local job = {}
 
 ---@class WindowConfig
 ---@field width_ratio number
@@ -35,16 +42,17 @@ local M = {}
 ---@field border string
 
 ---@class CommandNames
----@field plugin_search string
----@field tag_search string
+---@field search_plugins string
+---@field search_tags string
+---@field search_by_tag string
 
 ---@class KeyBindings
 ---@field close string
 ---@field open_git string
 
 ---@class CacheTTL
----@field plugins number
----@field tags number
+---@field search_plugins number
+---@field search_tags number
 
 ---@class Config
 ---@field window WindowConfig
@@ -65,8 +73,9 @@ local config = {
 	setup_user_commands = false,
 	-- User command name
 	command_names = {
-		plugin_search = "NeovimcraftPlugins",
-		tag_search = "NeovimcraftTags",
+		search_plugins = "NeovimcraftPlugins",
+		search_tags = "NeovimcraftTags",
+		search_by_tag = "NeovimcraftByTag",
 	},
 	-- Keymap: pass map = false to skip setting a keymap
 	key_bindings = {
@@ -74,36 +83,44 @@ local config = {
 		open_git = "o",
 	},
 	cache_ttl = {
-		plugins = 24 * 3600, -- 24 hours
-		tags = 24 * 3600, -- 24 hours
+		search_plugins = 24 * 3600, -- 24 hours
+		search_tags = 24 * 3600, -- 24 hours
 	},
 }
 
 -- Cache for plugins and tags
 local cache = {
-	plugins = {
+	search_plugins = {
 		---@type Plugin[]
 		content = nil,
 		last_update = 0,
-		ttl = config.cache_ttl.plugins,
+		ttl = config.cache_ttl.search_plugins,
 	},
-	tags = {
+	search_tags = {
 		---@type string[]
 		content = nil,
 		last_update = 0,
-		ttl = config.cache_ttl.tags,
+		ttl = config.cache_ttl.search_tags,
 	},
 }
+
+-- Calculate width and height based on the editor's dimensions
+local function get_window_size()
+	local width = math.floor(vim.o.columns * config.window.width_ratio)
+	local height = math.floor(vim.o.lines * config.window.height_ratio)
+	return width, height
+end
 
 -- Fetch data from nvim.sh API
 ---@param type endpointTypes The type of cache to update
 ---@param  search_term? string The search term to use
 ---@return Plugin[]|string[]|nil The fetched data
 local function fetch_data(type, search_term)
+	---@type table<endpointTypes, string>
 	local endpoints = {
-		plugins = "s",
-		tags = "t",
-		tag_search = "t/",
+		search_plugins = "s",
+		search_tags = "t",
+		search_by_tag = "t/",
 	}
 	local endpoint = endpoints[type]
 	if not endpoint then
@@ -111,7 +128,7 @@ local function fetch_data(type, search_term)
 	end
 
 	local url = "https://nvim.sh/" .. endpoint
-	if type == "tag_search" then
+	if type == EndpointTypes.search_by_tag then
 		if not search_term then
 			return nil
 		end
@@ -122,7 +139,7 @@ local function fetch_data(type, search_term)
 	if response.status == 200 then
 		local body = vim.fn.json_decode(response.body)
 
-		if type == "plugins" or type == "tag_search" then
+		if type == EndpointTypes.search_plugins or type == EndpointTypes.search_by_tag then
 			local plugins = {}
 			for _, result in ipairs(body.results) do
 				if result.plugin then
@@ -137,16 +154,19 @@ local function fetch_data(type, search_term)
 	return nil
 end
 
----@param plugin Plugin
-local function retrieve_plugin_readme(plugin)
-	local url = string.format(
+local function get_url(plugin)
+	return string.format(
 		"https://raw.githubusercontent.com/%s/%s/%s/%s",
 		plugin.username,
 		plugin.repo,
 		plugin.branch,
 		"README.md"
 	)
+end
 
+---@param plugin Plugin
+local function retrieve_plugin_readme(plugin)
+	local url = get_url(plugin)
 	local result = curl.get(url)
 	if result.status ~= 200 then
 		return nil
@@ -173,9 +193,7 @@ end
 --- @param opts table: { buf = <buf_handle>, title = <string> }
 local function create_floating_window(opts)
 	opts = opts or { title = "Neovim Plugin info" }
-	local width = math.floor(vim.o.columns * config.window.width_ratio)
-	local height = math.floor(vim.o.lines * config.window.height_ratio)
-
+	local width, height = get_window_size()
 	-- Calculate position for centering
 	local col = math.floor((vim.o.columns - width) / 2)
 	local row = math.floor((vim.o.lines - height) / 2)
@@ -288,15 +306,25 @@ local function plugin_picker(opts, content)
 						title = plugin.name,
 					})
 
-					vim.api.nvim_buf_set_name(floating.buf, plugin.name .. "README.md")
+					local ok, glow = pcall(require, "glow")
+					if ok then
+					else
+						vim.api.nvim_buf_set_name(floating.buf, plugin.name .. "README.md")
 
-					-- Clear existing content and insert the fetched lines
-					local lines = retrieve_plugin_readme(plugin)
-					if not lines then
-						lines = { "Failed to fetch README.md" }
+						-- Clear existing content and insert the fetched lines
+						local lines = retrieve_plugin_readme(plugin)
+						if not lines then
+							lines = { "Failed to fetch README.md" }
+						end
+						vim.api.nvim_buf_set_lines(floating.buf, 0, -1, false, lines)
+
+						-- Buffer/window settings
+						vim.api.nvim_set_option_value("wrap", true, { win = floating.win })
+						vim.api.nvim_set_option_value("modifiable", false, { buf = floating.buf })
+						vim.api.nvim_set_option_value("bufhidden", "delete", { buf = floating.buf })
+						vim.api.nvim_set_option_value("buftype", "nofile", { buf = floating.buf })
+						vim.api.nvim_set_option_value("filetype", "markdown", { buf = floating.buf })
 					end
-					vim.api.nvim_buf_set_lines(floating.buf, 0, -1, false, lines)
-
 					-- Keymaps in floating buffer
 					vim.api.nvim_buf_set_keymap(
 						floating.buf,
@@ -308,17 +336,17 @@ local function plugin_picker(opts, content)
 					vim.api.nvim_buf_set_keymap(
 						floating.buf,
 						"n",
+						"<esc>",
+						string.format([[<cmd>lua vim.api.nvim_win_close(%d, true)<CR>]], floating.win),
+						{ noremap = true, silent = true }
+					)
+					vim.api.nvim_buf_set_keymap(
+						floating.buf,
+						"n",
 						config.key_bindings.open_git,
 						string.format([[<cmd>lua vim.ui.open("%s")<CR>]], plugin.link),
 						{ noremap = true, silent = true }
 					)
-
-					-- Buffer/window settings
-					vim.bo[floating.buf].filetype = "markdown"
-					vim.bo[floating.buf].bufhidden = "delete"
-					vim.bo[floating.buf].buftype = "nofile"
-					vim.wo[floating.win].wrap = true
-					vim.bo[floating.buf].modifiable = false
 				end)
 				return true
 			end,
@@ -327,19 +355,19 @@ local function plugin_picker(opts, content)
 end
 
 -- Main plugin search function
-function M.search_by_tags(opts)
+function M.search_by_tag(opts)
 	opts = opts or {}
 
-	local content = fetch_data("tag_search", opts.search_term)
+	local content = fetch_data(EndpointTypes.search_by_tag, opts.search_term)
 	plugin_picker(opts, content)
 end
 
 -- Main plugin search function
 function M.search_plugins(opts)
 	opts = opts or {}
-	update_cache("plugins")
+	update_cache(EndpointTypes.search_plugins)
 
-	local content = cache.plugins.content
+	local content = cache.search_plugins.content
 	if not content then
 		vim.notify("Failed to fetch data from nvim.sh", vim.log.levels.ERROR)
 		return
@@ -350,9 +378,9 @@ end
 -- List available tags
 function M.search_tags(opts)
 	opts = opts or {}
-	update_cache("tags")
+	update_cache(EndpointTypes.search_tags)
 
-	local content = cache.tags.content
+	local content = cache.search_tags.content
 
 	if not content then
 		vim.notify("Failed to fetch data from nvim.sh", vim.log.levels.ERROR)
@@ -378,7 +406,7 @@ function M.search_tags(opts)
 					local selection = action_state.get_selected_entry()
 					actions.close(prompt_bufnr)
 					-- Search plugins with selected tag
-					M.search_by_tags({ search_term = selection.value })
+					M.search_by_tag({ search_term = selection.value })
 				end)
 				return true
 			end,
@@ -396,13 +424,20 @@ function M.setup(user_config)
 end
 
 function M.setup_user_commands()
-	vim.api.nvim_create_user_command(config.command_names.plugin_search, function(opts)
+	vim.api.nvim_create_user_command(config.command_names.search_plugins, function(opts)
 		M.search_plugins(opts)
 	end, {
 		desc = string.format("Search all plugins from Neovimcraft"),
 	})
-	vim.api.nvim_create_user_command(config.command_names.tag_search, function(opts)
+	vim.api.nvim_create_user_command(config.command_names.search_tags, function(opts)
 		M.search_tags(opts)
+	end, {
+		desc = string.format("List all tags from Neovimcraft"),
+	})
+	vim.api.nvim_create_user_command(config.command_names.search_by_tag, function(opts)
+		local args = opts.fargs
+		opts = vim.tbl_extend("force", opts, { search_term = args[1] })
+		M.search_by_tag(opts)
 	end, {
 		desc = string.format("List all tags from Neovimcraft"),
 	})

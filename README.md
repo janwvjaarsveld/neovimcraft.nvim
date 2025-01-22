@@ -92,8 +92,8 @@ require('neovimcraft').setup({
     },
     setup_user_commands = false, -- Enable or disable user commands
     command_names = {
-        plugin_seach = "NeovimcraftPlugins", -- Command for plugin search
-        tag_seach = "NeovimcraftTags",      -- Command for tag search
+        plugin_search = "NeovimcraftPlugins", -- Command for plugin search
+        tag_search = "NeovimcraftTags",      -- Command for tag search
     },
     key_bindings = {
         close = "q", -- Key to close the preview window
@@ -152,7 +152,7 @@ require('telescope').load_extension('neovimcraft')
 
 You can then use the following Telescope functions:
 
-- `:Telescope neovimcraft seach_plugins` – Search plugins.
+- `:Telescope neovimcraft search_plugins` – Search plugins.
 - `:Telescope neovimcraft search_tags` – List tags.
 
 ## Contributing
