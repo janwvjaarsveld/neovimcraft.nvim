@@ -5,6 +5,7 @@ local sorters = require("telescope.sorters")
 local action_state = require("telescope.actions.state")
 local previewers = require("telescope.previewers")
 local curl = require("plenary.curl")
+local neo_util = require("neovimcraft.util")
 
 --- @class Plugin
 --- @field id string The ID of the plugin
@@ -25,14 +26,6 @@ local curl = require("plenary.curl")
 --- @field createdAt string The date the plugin was created
 --- @field updatedAt string The last updated date
 
---- @alias endpointTypes "search_plugins"|"search_tags"|"search_by_tag"
---- @enum EndpointTypes
-local EndpointTypes = {
-	search_plugins = "search_plugins",
-	search_tags = "search_tags",
-	search_by_tag = "search_by_tag",
-}
-
 local M = {}
 
 ---@class WindowConfig
@@ -47,23 +40,22 @@ local M = {}
 ---@class KeyBindings
 ---@field close string
 ---@field open_git string
-
----@class CacheTTL
----@field search_plugins number
----@field search_tags number
+---@field back_to_search string
 
 ---@class Config
----@field window WindowConfig
+---@field readme_window WindowConfig
 ---@field setup_user_commands boolean
 ---@field command_names CommandNames
 ---@field key_bindings KeyBindings
----@field cache_ttl CacheTTL
+---@field cache_ttl number
 
 -- Default configuration
 ---@type Config
 local config = {
+	cache_path = vim.fn.stdpath("cache"),
+	update_cache_at_start = false, -- If false, the cache will be updated on the first search
 	-- Floating window configuration
-	window = {
+	readme_window = {
 		width_ratio = 0.6, -- The fraction of the editor's width
 		height_ratio = 0.8, -- The fraction of the editor's height
 		border = "double", -- Available options: 'none', 'single', 'double', 'rounded', etc.
@@ -78,77 +70,82 @@ local config = {
 	key_bindings = {
 		close = "q", -- Optional: Change close key to 'x'
 		open_git = "o",
+		back_to_search = "<BS>",
 	},
-	cache_ttl = {
-		search_plugins = 24 * 3600, -- 24 hours
-		search_tags = 24 * 3600, -- 24 hours
-	},
+	cache_ttl = 24 * 3600, -- 24 hours
 }
+
+local isCacheLoaded = false
 
 -- Cache for plugins and tags
 local cache = {
-	search_plugins = {
-		---@type Plugin[]
-		content = nil,
-		last_update = 0,
-		ttl = config.cache_ttl.search_plugins,
-	},
-	search_tags = {
-		---@type string[]
-		content = nil,
-		last_update = 0,
-		ttl = config.cache_ttl.search_tags,
-	},
+	last_update = 0,
+	---@type Plugin[]
+	plugins = {},
+	---@type string[]
+	tags = {},
 }
 
 -- Calculate width and height based on the editor's dimensions
 local function get_window_size()
-	local width = math.floor(vim.o.columns * config.window.width_ratio)
-	local height = math.floor(vim.o.lines * config.window.height_ratio)
+	local width = math.floor(vim.o.columns * config.readme_window.width_ratio)
+	local height = math.floor(vim.o.lines * config.readme_window.height_ratio)
 	return width, height
 end
 
--- Fetch data from nvim.sh API
----@param type endpointTypes The type of cache to update
----@param  search_term? string The search term to use
----@return Plugin[]|string[]|nil The fetched data
-local function fetch_data(type, search_term)
-	---@type table<endpointTypes, string>
-	local endpoints = {
-		search_plugins = "s",
-		search_tags = "t",
-		search_by_tag = "t/",
-	}
-	local endpoint = endpoints[type]
-	if not endpoint then
-		return nil
-	end
-
-	local url = "https://nvim.sh/" .. endpoint
-	if type == EndpointTypes.search_by_tag then
-		if not search_term then
-			return nil
-		end
-		url = url .. search_term
-	end
-
-	local response = curl.get(url .. "?format=json", { headers = { Accept = "application/json" } })
-	if response.status == 200 then
-		local body = vim.fn.json_decode(response.body)
-
-		if type == EndpointTypes.search_plugins or type == EndpointTypes.search_by_tag then
-			local plugins = {}
-			for _, result in ipairs(body.results) do
-				if result.plugin then
-					table.insert(plugins, result.plugin)
+-- Fetch data from the API db.json endpoint
+local function refresh_data()
+	local current_time = os.time()
+	local data = neo_util.load_db(config.cache_path)
+	if data then
+		local last_update = data.last_update
+		if (current_time - last_update) < config.cache_ttl then
+			cache.last_update = last_update
+			for _, plugin in pairs(data.plugins) do
+				if plugin then
+					table.insert(cache.plugins, plugin)
 				end
 			end
-			return plugins
-		else
-			return body.tags
+			cache.tags = data.tags
+			isCacheLoaded = true
+			return
+		end
+	else
+		-- If the cache is older than the TTL, fetch the data from the API
+		local response = curl.get("https://neovimcraft.com/db.json", { headers = { Accept = "application/json" } })
+		if response.status == 200 then
+			local body = vim.json.decode(response.body)
+			local response_plugins = body.plugins
+
+			local tags = {}
+			for _, plugin in pairs(response_plugins) do
+				if plugin then
+					table.insert(cache.plugins, plugin)
+					for _, tag in ipairs(plugin.tags) do
+						tags[tag] = true
+					end
+				end
+			end
+
+			cache.last_update = current_time
+			for tag, _ in pairs(tags) do
+				table.insert(cache.tags, tag)
+			end
+			isCacheLoaded = true
+
+			-- Save the data to a file
+			local cached_data = {
+				tags = cache.tags,
+				plugins = response_plugins,
+				last_update = current_time,
+			}
+
+			-- Write the data to a file
+			neo_util.save_db(cached_data, config.cache_path)
+			return
 		end
 	end
-	return nil
+	neo_util.notify_error("Failed to fetch data from neovimcraft.com")
 end
 
 local function get_url(plugin)
@@ -173,16 +170,10 @@ local function retrieve_plugin_readme(plugin)
 end
 
 -- Update cache if needed
---- @param type endpointTypes The type of cache to update
-local function update_cache(type)
+local function update_cache()
 	local current_time = os.time()
-	if not cache[type].content or (current_time - cache[type].last_update) > cache[type].ttl then
-		local response = fetch_data(type)
-		if not response then
-			return
-		end
-		cache[type].content = response
-		cache[type].last_update = current_time
+	if not isCacheLoaded or (current_time - cache.last_update) > config.cache_ttl then
+		refresh_data()
 	end
 end
 
@@ -205,7 +196,7 @@ local function create_floating_window(opts)
 		col = col,
 		row = row,
 		style = "minimal",
-		border = config.window.border,
+		border = config.readme_window.border,
 		title = opts.title,
 		title_pos = "center",
 	}
@@ -217,7 +208,7 @@ end
 -- Format plugin entry for display
 ---@param plugin Plugin
 local function format_plugin(plugin)
-	local name = plugin.name or "Unknown"
+	local name = plugin.id or "Unknown"
 	return string.format("%s", name)
 end
 
@@ -259,6 +250,53 @@ local function format_plugin_preview(plugin)
 	return content
 end
 
+local function render_plugin_readme(plugin, opts)
+	-- Create/reuse floating window
+	local floating = create_floating_window({
+		title = plugin.name,
+	})
+	vim.api.nvim_buf_set_name(floating.buf, plugin.name .. "README.md")
+
+	if vim.fn.executable("glow") == 1 then
+		vim.api.nvim_set_option_value("filetype", "terminal", { buf = floating.buf })
+		-- vim.api.nvim_win_set_option("winblend", 0, { win = floating.win })
+		vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = floating.buf })
+		vim.api.nvim_set_option_value("filetype", "glowpreview", { buf = floating.buf })
+		vim.fn.termopen({ "glow", get_url(plugin) })
+	else
+		-- Clear existing content and insert the fetched lines
+		local lines = retrieve_plugin_readme(plugin)
+		if not lines then
+			lines = { "Failed to fetch README.md" }
+		end
+		vim.api.nvim_buf_set_lines(floating.buf, 0, -1, false, lines)
+
+		-- Buffer/window settings
+		vim.api.nvim_set_option_value("wrap", true, { win = floating.win })
+		vim.api.nvim_set_option_value("modifiable", false, { buf = floating.buf })
+		vim.api.nvim_set_option_value("bufhidden", "delete", { buf = floating.buf })
+		vim.api.nvim_set_option_value("buftype", "nofile", { buf = floating.buf })
+		vim.api.nvim_set_option_value("filetype", "markdown", { buf = floating.buf })
+	end
+	-- Keymaps in floating buffer
+	vim.keymap.set("n", config.key_bindings.close, function()
+		vim.api.nvim_win_close(floating.win, true)
+	end, { noremap = true, silent = true, buffer = floating.buf, desc = "Close floating window" })
+
+	vim.keymap.set("n", "<esc>", function()
+		vim.api.nvim_win_close(floating.win, true)
+	end, { noremap = true, silent = true, buffer = floating.buf, desc = "Close floating window" })
+
+	vim.keymap.set("n", config.key_bindings.open_git, function()
+		vim.ui.open(plugin.link)
+	end, { noremap = true, silent = true, buffer = floating.buf, desc = "Open plugin on GitHub" })
+
+	vim.keymap.set("n", config.key_bindings.back_to_search, function()
+		vim.api.nvim_win_close(floating.win, true)
+		M.search_plugins(opts)
+	end, { buffer = floating.buf, noremap = true, silent = true, desc = "Return to previous window" })
+end
+
 -- Create plugin previewer
 local plugin_previewer = previewers.new_buffer_previewer({
 	title = "Plugin Details",
@@ -272,13 +310,14 @@ local plugin_previewer = previewers.new_buffer_previewer({
 
 local function plugin_picker(opts, content)
 	if not content then
-		vim.notify("No content to diplay", vim.log.levels.ERROR)
+		neo_util.notify_error("No content to diplay")
 		return
 	end
 
 	pickers
 		.new(opts, {
-			prompt_title = opts.tag and ("Neovim Plugins [" .. opts.tag .. "]") or "Neovim Plugins",
+			prompt_title = opts.tag and ("Neovimcraft Plugins [" .. opts.tag .. "]") or "Neovimcraft Plugins",
+			default_text = opts.filter,
 			finder = finders.new_table({
 				results = content,
 				---@param plugin Plugin
@@ -286,67 +325,29 @@ local function plugin_picker(opts, content)
 					return {
 						value = plugin,
 						display = format_plugin(plugin),
-						ordinal = plugin.name,
+						ordinal = plugin.id,
 					}
 				end,
 			}),
 			sorter = sorters.get_fzy_sorter(opts),
 			previewer = plugin_previewer,
-			attach_mappings = function(prompt_bufnr)
+			attach_mappings = function(prompt_bufnr, map)
+				map("n", "<BS>", function(_prompt_bufnr)
+					if opts.origin == "tags" then
+						actions.close(_prompt_bufnr)
+						opts.filter = opts.tag
+						M.search_tags(opts)
+					end
+				end, { desc = "Return to previous window" })
+
 				actions.select_default:replace(function()
 					local selection = action_state.get_selected_entry()
+					local prompt = action_state.get_current_line()
 					actions.close(prompt_bufnr)
 					local plugin = selection.value
 
-					-- Create/reuse floating window
-					local floating = create_floating_window({
-						title = plugin.name,
-					})
-					vim.api.nvim_buf_set_name(floating.buf, plugin.name .. "README.md")
-
-					if vim.fn.executable("glow") == 1 then
-						vim.api.nvim_set_option_value("filetype", "terminal", { buf = floating.buf })
-						-- vim.api.nvim_win_set_option("winblend", 0, { win = floating.win })
-						vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = floating.buf })
-						vim.api.nvim_set_option_value("filetype", "glowpreview", { buf = floating.buf })
-						vim.fn.termopen({ "glow", get_url(plugin) })
-					else
-						-- Clear existing content and insert the fetched lines
-						local lines = retrieve_plugin_readme(plugin)
-						if not lines then
-							lines = { "Failed to fetch README.md" }
-						end
-						vim.api.nvim_buf_set_lines(floating.buf, 0, -1, false, lines)
-
-						-- Buffer/window settings
-						vim.api.nvim_set_option_value("wrap", true, { win = floating.win })
-						vim.api.nvim_set_option_value("modifiable", false, { buf = floating.buf })
-						vim.api.nvim_set_option_value("bufhidden", "delete", { buf = floating.buf })
-						vim.api.nvim_set_option_value("buftype", "nofile", { buf = floating.buf })
-						vim.api.nvim_set_option_value("filetype", "markdown", { buf = floating.buf })
-					end
-					-- Keymaps in floating buffer
-					vim.api.nvim_buf_set_keymap(
-						floating.buf,
-						"n",
-						config.key_bindings.close,
-						string.format([[<cmd>lua vim.api.nvim_win_close(%d, true)<CR>]], floating.win),
-						{ noremap = true, silent = true }
-					)
-					vim.api.nvim_buf_set_keymap(
-						floating.buf,
-						"n",
-						"<esc>",
-						string.format([[<cmd>lua vim.api.nvim_win_close(%d, true)<CR>]], floating.win),
-						{ noremap = true, silent = true }
-					)
-					vim.api.nvim_buf_set_keymap(
-						floating.buf,
-						"n",
-						config.key_bindings.open_git,
-						string.format([[<cmd>lua vim.ui.open("%s")<CR>]], plugin.link),
-						{ noremap = true, silent = true }
-					)
+					opts.filter = prompt or plugin.id
+					render_plugin_readme(plugin, opts)
 				end)
 				return true
 			end,
@@ -357,19 +358,32 @@ end
 -- Main plugin search function
 function M.search_by_tag(opts)
 	opts = opts or {}
+	update_cache()
 
-	local content = fetch_data(EndpointTypes.search_by_tag, opts.search_term)
+	-- TODO: Implement search by tag
+	local content = {}
+	if not opts.tag then
+		content = cache.plugins
+	else
+		for _, plugin in ipairs(cache.plugins) do
+			for _, ptag in ipairs(plugin.tags) do
+				if opts.tag == ptag then
+					table.insert(content, plugin)
+				end
+			end
+		end
+	end
 	plugin_picker(opts, content)
 end
 
 -- Main plugin search function
 function M.search_plugins(opts)
 	opts = opts or {}
-	update_cache(EndpointTypes.search_plugins)
+	update_cache()
 
-	local content = cache.search_plugins.content
+	local content = cache.plugins
 	if not content then
-		vim.notify("Failed to fetch data from nvim.sh", vim.log.levels.ERROR)
+		neo_util.notify_error("Failed to fetch data from nvim.sh")
 		return
 	end
 	plugin_picker(opts, content)
@@ -378,18 +392,19 @@ end
 -- List available tags
 function M.search_tags(opts)
 	opts = opts or {}
-	update_cache(EndpointTypes.search_tags)
+	update_cache()
 
-	local content = cache.search_tags.content
+	local content = cache.tags
 
 	if not content then
-		vim.notify("Failed to fetch data from nvim.sh", vim.log.levels.ERROR)
+		neo_util.notify_error("Failed to fetch data from nvim.sh")
 		return
 	end
 
 	pickers
 		.new(opts, {
 			prompt_title = "Neovim Plugin Tags",
+			default_text = opts.filter,
 			finder = finders.new_table({
 				results = content,
 				entry_maker = function(tag)
@@ -406,7 +421,10 @@ function M.search_tags(opts)
 					local selection = action_state.get_selected_entry()
 					actions.close(prompt_bufnr)
 					-- Search plugins with selected tag
-					M.search_by_tag({ search_term = selection.value })
+					opts.tag = selection.value
+					opts.origin = "tags"
+					opts.filter = ""
+					M.search_by_tag(opts)
 				end)
 				return true
 			end,
@@ -418,6 +436,9 @@ end
 --- @param user_config? table: The user configuration
 function M.setup(user_config)
 	config = vim.tbl_deep_extend("force", config, user_config or {})
+	if config.update_cache_at_start then
+		update_cache()
+	end
 	if config.setup_user_commands then
 		M.setup_user_commands()
 	end
@@ -425,20 +446,39 @@ end
 
 function M.setup_user_commands()
 	vim.api.nvim_create_user_command(config.command_names.search_plugins, function(opts)
-		M.search_plugins(opts)
-	end, {
-		desc = string.format("Search all plugins from Neovimcraft"),
-	})
-	vim.api.nvim_create_user_command(config.command_names.search_tags, function(opts)
+		update_cache()
 		local args = opts.fargs
 		if not args or #args == 0 then
-			M.search_tags(opts)
+			M.search_plugins(opts)
 		else
-			opts = vim.tbl_extend("force", opts, { search_term = args[1] })
-			M.search_by_tag(opts)
+			opts.filter = args[1]
+			for _, plugin in ipairs(cache.plugins) do
+				if plugin.id == args[1] then
+					render_plugin_readme(plugin, opts)
+					return
+				end
+			end
+			plugin_picker(opts, cache.plugins)
 		end
 	end, {
-		desc = string.format("List all tags from Neovimcraft. Optionally search plugins by tag"),
+		desc = "Search all plugins from Neovimcraft. Optionally search plugins by name",
+		nargs = "?",
+	})
+
+	vim.api.nvim_create_user_command(config.command_names.search_tags, function(opts)
+		update_cache()
+		local args = opts.fargs
+		local seach_term = args[1]
+		if neo_util.array_contains(cache.tags, seach_term) then
+			opts.tag = seach_term
+			opts.origin = "tags"
+			M.search_by_tag(opts)
+		else
+			opts.filter = seach_term
+			M.search_tags(opts)
+		end
+	end, {
+		desc = "List all tags from Neovimcraft. Optionally search plugins by tag",
 		nargs = "?",
 	})
 end
