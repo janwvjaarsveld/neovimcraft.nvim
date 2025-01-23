@@ -43,6 +43,9 @@ local M = {}
 ---@field back_to_search string
 
 ---@class Config
+---@field cache_path string|string[]
+---@field update_cache_at_startup boolean
+---@field use_glow boolean
 ---@field readme_window WindowConfig
 ---@field setup_user_commands boolean
 ---@field command_names CommandNames
@@ -52,26 +55,39 @@ local M = {}
 -- Default configuration
 ---@type Config
 local config = {
+	-- Path to store the cache. Data will be stored in a subdirectory called 'neovimcraft'
 	cache_path = vim.fn.stdpath("cache"),
-	update_cache_at_start = false, -- If false, the cache will be updated on the first search
-	-- Floating window configuration
+	-- If false, the cache will be updated on the first search
+	update_cache_at_startup = false,
+	-- Enable or disable glow for README rendering
+	use_glow = true,
+	-- The window configuration for the readme preview
 	readme_window = {
-		width_ratio = 0.6, -- The fraction of the editor's width
-		height_ratio = 0.8, -- The fraction of the editor's height
-		border = "double", -- Available options: 'none', 'single', 'double', 'rounded', etc.
+		-- The fraction of the editor's width
+		width_ratio = 0.6,
+		-- The fraction of the editor's height
+		height_ratio = 0.8,
+		-- Available options: 'none', 'single', 'double', 'rounded', etc.
+		border = "double",
 	},
+	-- Enable or disable user auto commands
 	setup_user_commands = true,
 	-- User command name
 	command_names = {
+		-- Command for plugin search
 		search_plugins = "NeovimcraftPlugins",
+		-- Command for tag search
 		search_tags = "NeovimcraftTags",
 	},
-	-- Keymap: pass map = false to skip setting a keymap
 	key_bindings = {
-		close = "q", -- Optional: Change close key to 'x'
+		-- Key to close the preview window
+		close = "q",
+		-- Key to open GitHub link
 		open_git = "o",
+		-- Key to go back to search results
 		back_to_search = "<BS>",
 	},
+	-- How often to refresh the cache in seconds
 	cache_refesh_rate = 24 * 3600, -- 24 hours
 }
 
@@ -257,7 +273,7 @@ local function render_plugin_readme(plugin, opts)
 	})
 	vim.api.nvim_buf_set_name(floating.buf, plugin.name .. "README.md")
 
-	if vim.fn.executable("glow") == 1 then
+	if config.use_glow and vim.fn.executable("glow") == 1 then
 		vim.api.nvim_set_option_value("filetype", "terminal", { buf = floating.buf })
 		-- vim.api.nvim_win_set_option("winblend", 0, { win = floating.win })
 		vim.api.nvim_set_option_value("bufhidden", "wipe", { buf = floating.buf })

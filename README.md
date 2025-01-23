@@ -1,8 +1,8 @@
-# Neovimcraft.nvim
+# `Neovimcraft.nvim`
 
-Neovimcraft.nvim is a Neovim plugin designed to simplify the process of
+`Neovimcraft.nvim` is a Neovim plugin designed to simplify the process of
 discovering and exploring plugins from the [nvim.sh](https://nvim.sh) API
-(see [neurosnap/neovimcraft](https://github.com/neurosnap/neovimcraft). It integrates
+(see [neurosnap/neovimcraft](https://github.com/neurosnap/neovimcraft)). It integrates
 seamlessly with [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim),
 offering an intuitive interface for plugin and tag searches.
 
@@ -15,25 +15,18 @@ Special thanks to the team behind [neovimcraft.com](https://neovimcraft.com)
 for providing such an excellent resource for the Neovim community and making
 this API available.
 
-[Eric Bower](https://bower.sh)
-[Nvim.sh](https://github.com/neurosnap/nvim.sh)
-
 ## Table of Contents
 
 <!--toc:start-->
 
-- [Neovimcraft.nvim](#neovimcraftnvim)
-  - [Features](#features)
-  - [Requirements](#requirements)
-  - [Installation](#installation)
-  - [Configuration](#configuration)
-  - [Commands](#commands)
-  - [Usage](#usage)
-    - [Plugin Search](#plugin-search)
-    - [Search Plugins by Tag](#search-plugins-by-tag)
-  - [From Telescope Extension](#from-telescope-extension)
-  - [Contributing](#contributing)
-  <!--toc:end-->
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Configuration](#configuration)
+- [Commands](#commands)
+- [Usage](#usage)
+- [Contributing](#contributing)
+<!--toc:end-->
 
 ## Features
 
@@ -94,28 +87,36 @@ Below is the default configuration:
 require('neovimcraft').setup({
     -- Path to store the cache. Data will be stored in a subdirectory called 'neovimcraft'
     cache_path = vim.fn.stdpath("cache"),
-    -- If false, the cache will be updated on the first search
-    update_cache_at_start = false,
+    -- If true, the cache will be checked and updated when the plugin is loaded
+    -- If false, the cache will be checked and updated on the first search
+    update_cache_at_startup = false,
+    -- Enable or disable glow for README rendering
+    use_glow = true,
     -- The window configuration for the readme preview
     readme_window = {
-    -- The fraction of the editor's width
-    width_ratio = 0.6,
-    -- The fraction of the editor's height
-    height_ratio = 0.8,
-    -- Available options: 'none', 'single', 'double', 'rounded', etc.
-    border = "double",
+        -- The fraction of the editor's width
+        width_ratio = 0.6,
+        -- The fraction of the editor's height
+        height_ratio = 0.8,
+        -- Available options: 'none', 'single', 'double', 'rounded', etc.
+        border = "double",
     },
     -- Enable or disable user auto commands
     setup_user_commands = true,
     -- User command name
     command_names = {
-    search_plugins = "NeovimcraftPlugins", -- Command for plugin search
-    search_tags = "NeovimcraftTags", -- Command for tag search
+        -- Command for plugin search
+        search_plugins = "NeovimcraftPlugins",
+        -- Command for tag search
+        search_tags = "NeovimcraftTags",
     },
     key_bindings = {
-            close = "q", -- Key to close the preview window
-            open_git = "o", -- Key to open GitHub link
-            back_to_search = "<BS>", -- Key to go back to search results
+        -- Key to close the preview window
+        close = "q",
+        -- Key to open GitHub link
+        open_git = "o",
+        -- Key to go back to search results
+        back_to_search = "<BS>",
     },
     -- How often to refresh the cache in seconds
     cache_refesh_rate = 24 * 3600, -- 24 hours
@@ -124,11 +125,11 @@ require('neovimcraft').setup({
 
 ## Commands
 
-If `setup_user_commands` is enabled, the following user commands are available
+If `setup_user_commands` is enabled, the following user autocommands are available
 (unless you've customized the command names):
 
 - `:NeovimcraftPlugins` – Search all plugins.
-- `:NeovimcraftTags` – List all available tags.
+- `:NeovimcraftTags` – Search all tags.
 
 ## Usage
 
@@ -139,8 +140,6 @@ The plugin supports two different ways to render README files:
   enhanced viewing experience
 - If `glow` is not available, the plugin will fallback to using your configured
   markdown LSP for syntax highlighting
-
-### Plugin Search
 
 You can search for plugins in several ways:
 
@@ -160,46 +159,35 @@ You can search for plugins in several ways:
    :NeovimcraftTags comp                " Search tags with `comp` as the filter input
    ```
 
-3. Using Telescope directly:
+3. Using Telescope extension:
+
+   ```lua
+   require('telescope').load_extension('neovimcraft')
+   ```
+
+   You can then use the following Telescope functions:
 
    ```vim
-   :Telescope neovimcraft plugins " Search all plugins available using Telescope
+   :Telescope neovimcraft plugins   " Search all plugins available using Telescope
+   :Telescope neovimcraft tags      " Search all tags available using Telescope
    ```
 
 4. Select a plugin to view its details in a floating window.
 5. In the floating window:
 
-- Press `q` to close the window.
-- Press `o` to open the plugin’s GitHub page.
-- Press `<BS>` to navigate back to the previous Telescope window.
-
-### Search Plugins by Tag
-
-1. List all tags:
-
-   ```vim
-   :NeovimcraftTags
-   ```
-
-2. Select a tag to view plugins filtered by that tag.
-
-## From Telescope Extension
-
-If you’re using Telescope extensions, load the neovimcraft.nvim extension:
-
-```lua
-require('telescope').load_extension('neovimcraft')
-```
-
-You can then use the following Telescope functions:
-
-- `:Telescope neovimcraft plugins` – Search plugins.
-- `:Telescope neovimcraft tags` – Search tags.
+   - Press `q` to close the window.
+   - Press `o` to open the plugin’s GitHub page.
+   - Press `<BS>` to navigate back to the previous Telescope window.
 
 ## Contributing
 
 Feel free to contribute by submitting issues, feature requests, or pull
 requests. Ensure code follows best practices and is well-documented.
+
+## Credits
+
+- [Eric Bower](https://bower.sh) - Creator of [neovimcraft.com](https://neovimcraft.com)
+- [Nvim.sh](https://github.com/neurosnap/nvim.sh) - API for [neovimcraft.com](https://neovimcraft.com)
 
 ---
 
