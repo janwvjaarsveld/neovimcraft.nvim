@@ -47,7 +47,7 @@ local M = {}
 ---@field setup_user_commands boolean
 ---@field command_names CommandNames
 ---@field key_bindings KeyBindings
----@field cache_ttl number
+---@field cache_refesh_rate number
 
 -- Default configuration
 ---@type Config
@@ -72,7 +72,7 @@ local config = {
 		open_git = "o",
 		back_to_search = "<BS>",
 	},
-	cache_ttl = 24 * 3600, -- 24 hours
+	cache_refesh_rate = 24 * 3600, -- 24 hours
 }
 
 local isCacheLoaded = false
@@ -99,7 +99,7 @@ local function refresh_data()
 	local data = neo_util.load_db(config.cache_path)
 	if data then
 		local last_update = data.last_update
-		if (current_time - last_update) < config.cache_ttl then
+		if (current_time - last_update) < config.cache_refesh_rate then
 			cache.last_update = last_update
 			for _, plugin in pairs(data.plugins) do
 				if plugin then
@@ -172,7 +172,7 @@ end
 -- Update cache if needed
 local function update_cache()
 	local current_time = os.time()
-	if not isCacheLoaded or (current_time - cache.last_update) > config.cache_ttl then
+	if not isCacheLoaded or (current_time - cache.last_update) > config.cache_refesh_rate then
 		refresh_data()
 	end
 end

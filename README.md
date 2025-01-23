@@ -15,10 +15,10 @@ Special thanks to the team behind [neovimcraft.com](https://neovimcraft.com)
 for providing such an excellent resource for the Neovim community and making
 this API available.
 
-[Eric Bower]("https://bower.sh")
-[Nvim.sh]("https://github.com/neurosnap/nvim.sh")
+[Eric Bower](https://bower.sh)
+[Nvim.sh](https://github.com/neurosnap/nvim.sh)
 
-## Telescope Table of Contents
+## Table of Contents
 
 <!--toc:start-->
 
@@ -48,6 +48,11 @@ this API available.
 - [Telescope.nvim](https://github.com/nvim-telescope/telescope.nvim)
 - [plenary.nvim](https://github.com/nvim-lua/plenary.nvim)
 
+Optional dependencies:
+
+- [glow](https://github.com/charmbracelet/glow) - For enhanced README rendering in the terminal
+- [MeanderingProgrammer/render-markdown.nvim](https://github.com/MeanderingProgrammer/render-markdown.nvim) - Plugin to improve viewing Markdown files in Neovim (fallback for README rendering if glow is not installed)
+
 ## Installation
 
 Use your preferred plugin manager to install `neovimcraft.nvim`. For example:
@@ -69,7 +74,7 @@ use {
 ### [Lazy](https://github.com/folke/lazy.nvim)
 
 ```lua
-{
+return {
     'janwvjaarsveld/neovimcraft.nvim',
     dependencies = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim' },
     config = function()
@@ -87,24 +92,33 @@ Below is the default configuration:
 
 ```lua
 require('neovimcraft').setup({
-    window = {
-        width_ratio = 0.8, -- Fraction of the editor's width
-        height_ratio = 0.8, -- Fraction of the editor's height
-        border = "double", -- Window border style
+    -- Path to store the cache. Data will be stored in a subdirectory called 'neovimcraft'
+    cache_path = vim.fn.stdpath("cache"),
+    -- If false, the cache will be updated on the first search
+    update_cache_at_start = false,
+    -- The window configuration for the readme preview
+    readme_window = {
+    -- The fraction of the editor's width
+    width_ratio = 0.6,
+    -- The fraction of the editor's height
+    height_ratio = 0.8,
+    -- Available options: 'none', 'single', 'double', 'rounded', etc.
+    border = "double",
     },
-    setup_user_commands = false, -- Enable or disable user commands
+    -- Enable or disable user auto commands
+    setup_user_commands = true,
+    -- User command name
     command_names = {
-        plugin_search = "NeovimcraftPlugins", -- Command for plugin search
-        tag_search = "NeovimcraftTags",      -- Command for tag search
+    search_plugins = "NeovimcraftPlugins", -- Command for plugin search
+    search_tags = "NeovimcraftTags", -- Command for tag search
     },
     key_bindings = {
-        close = "q", -- Key to close the preview window
-        open_git = "o", -- Key to open GitHub link
+            close = "q", -- Key to close the preview window
+            open_git = "o", -- Key to open GitHub link
+            back_to_search = "<BS>", -- Key to go back to search results
     },
-    cache_ttl = { -- How long to cache API data in seconds
-        plugins = 24 * 3600, -- 24 hours
-        tags = 24 * 3600, -- 24 hours
-    },
+    -- How often to refresh the cache in seconds
+    cache_refesh_rate = 24 * 3600, -- 24 hours
 })
 ```
 
@@ -113,26 +127,51 @@ require('neovimcraft').setup({
 If `setup_user_commands` is enabled, the following user commands are available
 (unless you've customized the command names):
 
-- `:NeovimcraftPlugins` – Search all plugins from nvim.sh.
-- `:NeovimcraftTags` – List all available tags from nvim.sh.
+- `:NeovimcraftPlugins` – Search all plugins.
+- `:NeovimcraftTags` – List all available tags.
 
 ## Usage
 
+The plugin supports two different ways to render README files:
+
+- If you have [glow](https://github.com/charmbracelet/glow) installed on your
+  system, README files will be rendered with terminal markdown formatting for an
+  enhanced viewing experience
+- If `glow` is not available, the plugin will fallback to using your configured
+  markdown LSP for syntax highlighting
+
 ### Plugin Search
 
-To search for plugins:
+You can search for plugins in several ways:
 
-1. Open the Telescope picker with the user command:
+1. Basic search:
 
    ```vim
-   :NeovimcraftPlugins
+   :NeovimcraftPlugins  " Search all plugins available using Telescope
+   :NeovimcraftTags     " Search all tags available using Telescope
    ```
 
-2. Select a plugin to view its details in a floating window.
-3. In the floating window:
+2. Filtered search with arguments:
+
+   ```vim
+   :NeovimcraftPlugins lazy             " Search for plugins containing `lazy` as part of the `author/repo_name`
+   :NeovimcraftPlugins folke/lazy.nvim  " Will open the plugin README in a floating window
+   :NeovimcraftTags format              " Search for plugins with the `format` tag
+   :NeovimcraftTags comp                " Search tags with `comp` as the filter input
+   ```
+
+3. Using Telescope directly:
+
+   ```vim
+   :Telescope neovimcraft plugins " Search all plugins available using Telescope
+   ```
+
+4. Select a plugin to view its details in a floating window.
+5. In the floating window:
 
 - Press `q` to close the window.
 - Press `o` to open the plugin’s GitHub page.
+- Press `<BS>` to navigate back to the previous Telescope window.
 
 ### Search Plugins by Tag
 
@@ -142,7 +181,7 @@ To search for plugins:
    :NeovimcraftTags
    ```
 
-2. Select a tag to view plugins associated with it.
+2. Select a tag to view plugins filtered by that tag.
 
 ## From Telescope Extension
 
@@ -154,8 +193,8 @@ require('telescope').load_extension('neovimcraft')
 
 You can then use the following Telescope functions:
 
-- `:Telescope neovimcraft search_plugins` – Search plugins.
-- `:Telescope neovimcraft search_tags` – List tags.
+- `:Telescope neovimcraft plugins` – Search plugins.
+- `:Telescope neovimcraft tags` – Search tags.
 
 ## Contributing
 
