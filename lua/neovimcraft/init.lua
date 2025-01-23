@@ -47,7 +47,7 @@ local M = {}
 ---@field update_cache_at_startup boolean
 ---@field use_glow boolean
 ---@field readme_window WindowConfig
----@field setup_user_commands boolean
+---@field setup_user_autocmds boolean
 ---@field command_names CommandNames
 ---@field key_bindings KeyBindings
 ---@field cache_refesh_rate number
@@ -70,8 +70,8 @@ local config = {
 		-- Available options: 'none', 'single', 'double', 'rounded', etc.
 		border = "double",
 	},
-	-- Enable or disable user auto commands
-	setup_user_commands = true,
+	-- Enable or disable user autocommands
+	setup_user_autocmds = true,
 	-- User command name
 	command_names = {
 		-- Command for plugin search
@@ -452,10 +452,10 @@ end
 --- @param user_config? table: The user configuration
 function M.setup(user_config)
 	config = vim.tbl_deep_extend("force", config, user_config or {})
-	if config.update_cache_at_start then
+	if config.update_cache_at_startup then
 		update_cache()
 	end
-	if config.setup_user_commands then
+	if config.setup_user_autocmds then
 		M.setup_user_commands()
 	end
 end

@@ -9,7 +9,7 @@ offering an intuitive interface for plugin and tag searches.
 ## Disclaimer
 
 This plugin is **not an official plugin** for [neovimcraft.com](https://neovimcraft.com).
-It is an independent project that utilizes the publicly available from neovimcraft.com
+It is an independent project that utilizes the publicly available API from neovimcraft.com
 to fetch and display plugin data.
 Special thanks to the team behind [neovimcraft.com](https://neovimcraft.com)
 for providing such an excellent resource for the Neovim community and making
@@ -56,11 +56,6 @@ Use your preferred plugin manager to install `neovimcraft.nvim`. For example:
 use {
     'janwvjaarsveld/neovimcraft.nvim',
     requires = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim' },
-    config = function()
-        require('neovimcraft').setup({
-            -- Add your custom configuration here
-        })
-    end
 }
 ```
 
@@ -70,6 +65,7 @@ use {
 return {
     'janwvjaarsveld/neovimcraft.nvim',
     dependencies = { 'nvim-telescope/telescope.nvim', 'nvim-lua/plenary.nvim' },
+    -- Calling setup is not required if you are happy with the default configuration
     config = function()
         require('neovimcraft').setup({
             -- Add your custom configuration here
@@ -102,7 +98,7 @@ require('neovimcraft').setup({
         border = "double",
     },
     -- Enable or disable user auto commands
-    setup_user_commands = true,
+    setup_user_autocmds = true,
     -- User command name
     command_names = {
         -- Command for plugin search
