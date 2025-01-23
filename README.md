@@ -184,6 +184,12 @@ You can search for plugins in several ways:
 Feel free to contribute by submitting issues, feature requests, or pull
 requests. Ensure code follows best practices and is well-documented.
 
+## I don't see my plugin in the search results
+
+If you don't see your plugin in the search results, it may be that the plugin
+is not yet submitted to [neovimcraft.com](https://neovimcraft.com). You can
+submit your plugin by following the instructions [here](https://github.com/neurosnap/neovimcraft?tab=readme-ov-file#want-to-submit-a-plugin)
+
 ## Credits
 
 - [Eric Bower](https://bower.sh) - Creator of [neovimcraft.com](https://neovimcraft.com)
